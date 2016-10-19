@@ -1,19 +1,10 @@
-#include <ncurses.h>
-#include <string.h>
 #include <stdio.h>
-#include <signal.h>
-#include "datastructure.h"
+#include "editor.h"
 
-void add_datastructure_to_window(WINDOW *win, data_structure *ds);
-void moveup(WINDOW *win, data_structure *ds);
-void movedown(WINDOW *win, data_structure *ds);
-void moveleft(WINDOW *win, data_structure *ds);
-void moveright(WINDOW *win, data_structure *ds);
 
-#define TAB 8
 
 int main(int argc, char *argv[]) {
-	int row, col, y, x, temp;
+	int row, col, y, x, temp, current_line_length, maxx, maxy;
 	int ch;
 	char temp2[1024];
 	data_structure *ds;
@@ -77,11 +68,29 @@ int main(int argc, char *argv[]) {
 				
 				break;					
 			default:
-				//move(y, x+3);
-				insch(ch);
-				ds_append_ch(ds, ch);
+				//insch(ch);
 				getyx(stdscr, y, x);
-				move(y, x+1);
+				getmaxyx(stdscr, maxy, maxx);
+				current_line_length = ds->current->l->length;
+				temp = current_line_length/maxx + 1;
+				
+				//move to start of line
+				move(y - ds->currentx/maxx, 0);
+				/* delete temp lines*/
+				insdelln(-1*temp);
+				ds_append_ch(ds, ch);
+				current_line_length = ds->current->l->length;
+				temp = current_line_length/maxx + 1;
+				insdelln(temp);
+				move(y - (ds->currentx - 1)/maxx, 0);
+				//printf("%d %d\n", x, maxx);
+				wprintw(stdscr, "%s\n", ds->current->l->string);
+				if(x+1 >= maxx)
+					move(y+1, 0);
+				else	
+					move(y, x+1);
+				//getyx(stdscr, y, x);
+				//moveright(stdscr, ds);
 
 				//move(y, x+2);
 				//printf("moved\n");						
@@ -99,53 +108,3 @@ int main(int argc, char *argv[]) {
 	ds_print(ds);
 
 }
-
-
-void add_datastructure_to_window(WINDOW *win,data_structure *ds) {
-	node *cursor;
-	cursor = ds->head;
-	while(cursor) {
-		wprintw(win, "%s\n", cursor->l->string);
-		cursor = cursor->next;
-	}
-	/* set currentx currenty to 0, 0*/
-	ds->currentx = ds->currenty = 0;
-	move(0, 0);
-}
-
-void moveup(WINDOW *win, data_structure *ds) {
-	int x, y;
-	getyx(win, y, x);
-	if(ds_move_up(ds))
-		move(y-1, ds->currentx);
-	
-}
-
-
-void movedown(WINDOW *win, data_structure *ds) {
-	int x, y;
-	getyx(win, y, x);
-	if(ds_move_down(ds))
-		move(y+1, ds->currentx); 
-}
-
-void moveleft(WINDOW *win, data_structure *ds) {
-	int x, y;
-	getyx(win, y, x);
-	if(ds_move_left(ds))
-		move(y, x-1); 
-}
-
-void moveright(WINDOW *win, data_structure *ds) {
-	int x, y;
-	getyx(win, y, x);
-	if(ds_move_right(ds))
-		move(y, x+1);
-}
-
-
-
-
-
-
-
