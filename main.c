@@ -54,16 +54,41 @@ int main(int argc, char *argv[]) {
 				insch(ch);
 				getyx(stdscr, y, x);
 				move(y, x + TAB - 2);
-				break;	
+				break;
+					
 			/* ENTER KEY */		
 			case 10:
-				addch('\n');
 				//TODO
+				getyx(stdscr, y, x);
+				getmaxyx(stdscr, maxy, maxx);
+				current_line_length = ds->current->l->length;
+				temp = current_line_length/maxx + 1;
+				
+				
+				//move to start of line
+				move(y - ds->currentx/maxx, 0);
+				/* delete temp lines*/
+				insdelln(-1*temp);
+				
+				
 				strcpy(temp2, ds->current->l->string + ds->currentx);
 				/* end the line */
 				ds_append_ch(ds, '\0');
-				ds_add_line(ds, ds->currenty + 1);
-				//TODO
+				current_line_length = ds->current->l->length;
+				temp = current_line_length/maxx + 1;
+				insdelln(temp);
+				move(y - (ds->currentx - 1)/maxx, 0);
+				wprintw(stdscr, "%s\n", ds->current->l->string);
+				
+				ds_append_line(ds);
+				strcpy(ds->current->l->string, temp2);
+				ds->current->l->length = strlen(temp2);
+				current_line_length = ds->current->l->length;
+				temp = current_line_length/maxx + 1;
+				insdelln(temp);
+				move(y + 1 - (ds->currentx - 1)/maxx, 0);
+				wprintw(stdscr, "%s\n", ds->current->l->string);
+				move(y + 1, 0);
 				//
 				
 				break;					
