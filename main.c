@@ -1,135 +1,179 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include "editor.h"
 
 
+//TODO handle resize add search option
+void bomb(void);
+void initialize_header_window(WINDOW *win); 
+void initialize_footer_window(WINDOW *win);
+void help();
 
 int main(int argc, char *argv[]) {
-	int row, col, y, x, temp, current_line_length, maxx, maxy;
-	int ch;
-	char temp2[1024];
+	int i, ch, maxx, maxy;
 	data_structure *ds;
-	if(argc < 2) {	
-		printf("Ussage ./editor filename\n");
-		return 1;
-	}	
-	ds = ds_load_file(argv[1]);	
+	WINDOW *header_window, *footer_window, *editor_window;
+	char filename[128], temp[128];
+	filename[0] = '\0';
+	if(argc >= 2) {
+		if(!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")) {
+			help();
+			return 0;	
+		}	
+		strcpy(filename, argv[1]);
+	}
+	
+	ds = ds_load_file(argv[1]);
+				
 	initscr();
-	keypad(stdscr,TRUE);
 	noecho();
 	raw();
+	getmaxyx(stdscr, maxy, maxx);
 	
+	if( (header_window = newwin(2, maxx, 0, 0)) == NULL) bomb();
+	if( (editor_window = newwin(maxy - 4,maxx, 2, 0)) == NULL) bomb();
+	if( (footer_window = newwin(2, maxx, maxy - 2, 0)) == NULL) bomb();
 	
-	add_datastructure_to_window(stdscr, ds);			
+	wrefresh(footer_window);
+	wrefresh(header_window);
+	wrefresh(editor_window);
+	
+	initialize_header_window(header_window);
+	initialize_footer_window(footer_window);
+	
+	getmaxyx(header_window, maxy, maxx);
+	keypad(editor_window, TRUE);
+	scrollok(editor_window, TRUE);
+	add_datastructure_to_window(editor_window, ds);
+	wrefresh(editor_window);
 	while(1) {
-		ch = getch();
+		ch = wgetch(editor_window);
 		switch (ch) {
 			case KEY_LEFT:
-				moveleft(stdscr, ds);
+				moveleft(editor_window, ds);
 				break;
+				
 			case KEY_RIGHT:
-				moveright(stdscr, ds);
+				moveright(editor_window, ds);
 				break;
+				
 			case KEY_UP:
-				moveup(stdscr, ds);
+				moveup(editor_window, ds);
 				break;
+				
 			case KEY_DOWN:
-				movedown(stdscr, ds);
+				movedown(editor_window, ds);
 				break;
+				
 			case KEY_DL:
-				addch('d');
 				break;
 			case KEY_DC:
-				addch('c');
+				if(moveright(editor_window, ds))
+					editor_backspace_key(editor_window, ds);
 				break;
-			case KEY_SF:
-				addch('s');
+			case KEY_SF:				
 				break;
+				
 			case KEY_BACKSPACE:
-				//move(y, x-1);
-				getyx(stdscr, y, x);
-				mvdelch(y, x-1);
+				editor_backspace_key(editor_window, ds);
 				break;
-			/* TAB KEY....TODO use tab as 4 spaces */	
+				
+			/* TAB KEY */	
 			case 9:
-				insch(ch);
-				getyx(stdscr, y, x);
-				move(y, x + TAB - 2);
+				for(i = 0; i < TAB; i++)
+					editor_add_default_char(editor_window, ds, ' ');
 				break;
 					
 			/* ENTER KEY */		
 			case 10:
-				//TODO
-				getyx(stdscr, y, x);
+				editor_enter_key(editor_window, ds);						
+				break;
+			
+			/* Ctrl + X */	
+			case 24:				
+				wmove(footer_window, 0, 0);
+				wprintw(footer_window, "File name to write : %s", filename);
+				echo();
+				wrefresh(footer_window);
+				wgetstr(footer_window, temp);
+				strcat(filename, temp);
+				ds_save_file(ds, filename);
+				noecho();
+				wrefresh(editor_window);
+				endwin();
+				return 0;
+				break;
+			/* Ctrl + C */
+			case 3:
+				endwin();
+				return 0;
+			
+			case KEY_RESIZE:
 				getmaxyx(stdscr, maxy, maxx);
-				current_line_length = ds->current->l->length;
-				temp = current_line_length/maxx + 1;
-				
-				
-				//move to start of line
-				move(y - ds->currentx/maxx, 0);
-				/* delete temp lines*/
-				insdelln(-1*temp);
-				
-				
-				strcpy(temp2, ds->current->l->string + ds->currentx);
-				/* end the line */
-				ds_append_ch(ds, '\0');
-				current_line_length = ds->current->l->length;
-				temp = current_line_length/maxx + 1;
-				insdelln(temp);
-				move(y - (ds->currentx - 1)/maxx, 0);
-				wprintw(stdscr, "%s\n", ds->current->l->string);
-				
-				ds_append_line(ds);
-				strcpy(ds->current->l->string, temp2);
-				ds->current->l->length = strlen(temp2);
-				current_line_length = ds->current->l->length;
-				temp = current_line_length/maxx + 1;
-				insdelln(temp);
-				move(y + 1 - (ds->currentx - 1)/maxx, 0);
-				wprintw(stdscr, "%s\n", ds->current->l->string);
-				move(y + 1, 0);
-				//
-				
-				break;					
+				if(maxy < 6 || maxx < 3)
+					break;
+				delwin(header_window);
+				delwin(footer_window);
+				delwin(editor_window);
+				if( (header_window = newwin(2, maxx, 0, 0)) == NULL) bomb();
+				if( (editor_window = newwin(maxy - 4,maxx, 2, 0)) == NULL) bomb();
+				if( (footer_window = newwin(2, maxx, maxy - 2, 0)) == NULL) bomb();
+				keypad(editor_window, TRUE);
+				scrollok(editor_window, TRUE);
+				add_datastructure_to_window(editor_window, ds);
+				initialize_header_window(header_window);
+				initialize_footer_window(footer_window);
+				break;
+											
 			default:
-				//insch(ch);
-				getyx(stdscr, y, x);
-				getmaxyx(stdscr, maxy, maxx);
-				current_line_length = ds->current->l->length;
-				temp = current_line_length/maxx + 1;
-				
-				//move to start of line
-				move(y - ds->currentx/maxx, 0);
-				/* delete temp lines*/
-				insdelln(-1*temp);
-				ds_append_ch(ds, ch);
-				current_line_length = ds->current->l->length;
-				temp = current_line_length/maxx + 1;
-				insdelln(temp);
-				move(y - (ds->currentx - 1)/maxx, 0);
-				//printf("%d %d\n", x, maxx);
-				wprintw(stdscr, "%s\n", ds->current->l->string);
-				if(x+1 >= maxx)
-					move(y+1, 0);
-				else	
-					move(y, x+1);
-				//getyx(stdscr, y, x);
-				//moveright(stdscr, ds);
-
-				//move(y, x+2);
-				//printf("moved\n");						
+				editor_add_default_char(editor_window, ds, ch);				
+				break;
+									
 		}
-	
-		//addch(ch);
-		if(ch == 'q') {
-			//insertln();
-			break;
-		}
-		refresh();
+		wrefresh(editor_window);
 	}
-	ds_save_file(ds, "output.txt");
-	endwin();
-	ds_print(ds);
 
+}
+
+
+void bomb(void) {
+	addstr("Unable to allocate memory for new window.\n");
+	endwin();
+}
+
+void initialize_footer_window(WINDOW *win) {
+	wmove(win, 1, 0);
+	wprintw(win, "   ");
+	wattron(win, A_REVERSE);
+	wprintw(win, "^X");
+	wattroff(win, A_REVERSE);
+	wprintw(win, " Save");
+	wprintw(win, "   ");
+	wattron(win, A_REVERSE);
+	wprintw(win, "^C");
+	wattroff(win, A_REVERSE);
+	wprintw(win, " Exit");
+	wrefresh(win);	
+}
+
+
+void initialize_header_window(WINDOW *win) {
+	int y, x, i;
+	char str[] = "Text Editor";
+	getmaxyx(win, y, x);
+	wattron(win, A_REVERSE);
+	for(i = 0; i < x; i++) {
+		waddch(win, ' ');
+	}
+	wmove(win, 0, (x - strlen(str))/2);
+	waddstr(win, str);
+	wattroff(win, A_REVERSE);
+	wrefresh(win);	
+}
+
+void help() {
+	printf("Usage : ./project [filename]\n");
+	printf("^ means Ctrl\n");
+	printf("For exit without saving use ^C\n");
+	printf("For save use ^X\n");
 }

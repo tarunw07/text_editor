@@ -2,9 +2,10 @@
 #include "datastructure.h"
 #include <stdlib.h>
 #include <errno.h>
+#include <ncurses.h>
 
 void ds_init(data_structure *ds) {
-	ds->head = ds->current = ds->tail = NULL;
+	ds->mid = ds->head = ds->current = ds->tail = NULL;
 	ds->currentx = ds->currenty = ds->length = 0;	
 }
 
@@ -110,6 +111,27 @@ int ds_delete_line(data_structure *ds, int pos) {
 	return 1;
 }
 
+int ds_delete_current_line(data_structure *ds) {
+	node *temp;
+	temp = ds->current;
+	if(ds->current->next) {
+		ds->current->prev->next = ds->current->next;
+		ds->current->next->prev = ds->current->prev;
+		ds->current = ds->current->next;
+		ds->currentx = 0;
+		free(temp);
+		return 1;
+	}
+	
+	ds->current->prev->next = NULL;
+	ds->current = ds->current->prev;
+	ds->currentx = 0;
+	free(temp);
+	ds->currenty--;
+	ds->length--;
+	return 2;
+}
+
 /* prints the content of datastructure */
 void ds_print(data_structure *ds) {
 	node *cursor;
@@ -123,45 +145,63 @@ void ds_print(data_structure *ds) {
 /* appends char ch to current pos */
 void ds_append_ch(data_structure *ds, char ch) {
 	line_add_char(ds->current->l, ds->currentx, ch);
+	if(ch == '\0')
+		ds->current->l->length = strlen(ds->current->l->string);
 	(ds->currentx)++;
 }
+
+int ds_delete_char(data_structure *ds) {
+	if(ds->currentx < 1)
+		return 0;
+	line_del_char(ds->current->l, ds->currentx - 1);
+	ds->currentx--;
+	return 1;
+}
+
+
 
 
 /* loads a text_file into data structure */
 data_structure *ds_load_file(char *filename) {
 	char ch;
+	int i;
 	data_structure *ds;
 	FILE *fp;
 	ds = (data_structure*)malloc(sizeof(data_structure));
 	ds_init(ds);
-	//TODO change this after completing append line
 	ds_add_line(ds, ds->length);
 	if(ds == NULL) {
 		printf("Failed to malloc data_structure\n");
 		exit(5);
 	}
 	
+	if(!filename)
+		return ds;
+	
 	fp = fopen(filename, "r");
-	if(fp == NULL) {
-		perror("Error");
-		exit(errno);
-	}
+	if(fp == NULL) 
+		return ds;
 	
 	while(1) {
 		ch = fgetc(fp);
 		if(ch == EOF)
 			break;
-		if(ch != '\n') {	
+		if(ch == '\t') {
+			for(i = 0; i < TAB; i++)
+				ds_append_ch(ds, ' ');
+		}	
+		else if(ch != '\n') 	
 			ds_append_ch(ds, ch);
-		}
-		else {
+		else
 			ds_append_line(ds);
-		}
+	
 	}
 	ds->current = ds->head;
 	ds->currentx = ds->currenty = 0;
-	/* delete extra '\n' */
-	ds_delete_line(ds, ds->length - 1);
+	/* if file is not empty */
+	if(ds->length != 1)
+		/* delete extra '\n' */
+		ds_delete_line(ds, ds->length - 1);
 	fclose(fp);
 	return ds;	
 }
@@ -173,6 +213,7 @@ int ds_save_file(data_structure *ds, char *filename) {
 	/* TODO make sure we have permisions to write to file */
 	fp = fopen(filename, "w");
 	if(fp == NULL) {
+		endwin();
 		perror("Error");
 		exit(errno);
 	}
@@ -226,6 +267,15 @@ int ds_move_down(data_structure *ds) {
 		ds->currentx = ds->current->l->length;
 			
 	return 1;	
+}
+
+
+char *ds_get_current_string(data_structure *ds) {
+	return ds->current->l->string;
+}
+
+int ds_get_current_line_length(data_structure *ds) {
+	return ds->current->l->length;
 }
 
 

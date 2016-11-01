@@ -48,7 +48,7 @@ void line_del_char(line *l, int pos) {
 	int j, len;
 	len = length(l);
 	if(pos < 0 || pos > len) {
-		err(1, "Invalid pos in line_add_char");		
+		err(1, " %d Invalid pos in line_dek_char", pos);		
 	}
 	/* delete char */
 	for(j = pos; j < len; j++) {
