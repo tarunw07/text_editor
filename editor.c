@@ -8,11 +8,8 @@ void add_datastructure_to_window(WINDOW *win, data_structure *ds) {
 	cursor = ds->head;
 	while(cursor) {
 		i += 1;
-		if(i > maxy) {
-			//TODO
-			ds->mid = cursor;
+		if(i > maxy)
 			break;
-		}
   		/* print at most first three characters (safe) */
 		wprintw(win, "%.*s", n - 1, cursor->l->string);
 		if(cursor->l->length >= n - 1) {
@@ -22,6 +19,7 @@ void add_datastructure_to_window(WINDOW *win, data_structure *ds) {
 		}
 		wmove(win, y + 1, 0);
 		y++;
+		ds->mid = cursor;
 		cursor = cursor->next;
 	}
 	/* set currentx currenty to 0, 0*/
@@ -56,6 +54,9 @@ int moveup(WINDOW *win, data_structure *ds) {
 				wprintw(win, "$");
 				scrollok(win,TRUE);
 			}
+			/* update ds->mid NOTE : it will be next in if condn not prev */
+			if(ds->mid->next)
+				ds->mid = ds->mid->prev;
 		}
 		else {
 		
@@ -95,6 +96,9 @@ int movedown(WINDOW *win, data_structure *ds) {
 		else {
 			wmove(win, y, 0);
 			wscrl(win, 1);
+			/* update ds->mid */
+			if(ds->mid->next)
+				ds->mid = ds->mid->next;
 		}
 		/* Insert   line */
 		wprintw(win, "%.*s", maxx - 1, ds->current->l->string, y, maxy);
@@ -222,6 +226,14 @@ void editor_enter_key(WINDOW *win, data_structure *ds) {
 	/* update current line length */
 	ds->current->l->length = strlen(temp2);
 	add_current_line_to_window(win, ds);
+	/* update ds->mid */
+	if(y == maxy - 1 || ds->current == ds->tail) {
+		ds->mid = ds->current;
+	}
+	else {
+		if(ds->mid->next)
+			ds->mid = ds->mid->prev;
+	}
 }
 
 
@@ -272,7 +284,8 @@ void editor_backspace_key(WINDOW *win, data_structure *ds) {
 		winsdelln(win, 1);					
 		add_current_line_to_window(win, ds);
 		/* update last line */
-		if(ds->mid) {
+		if(ds->mid->next) {
+			ds->mid = ds->mid->next;
 			wmove(win, maxy - 1, 0);
 			wprintw(win, "%.*s", maxx - 1, ds->mid->l->string);
 			if(ds->mid->l->length/(maxx - 1) != 0) {
@@ -280,7 +293,6 @@ void editor_backspace_key(WINDOW *win, data_structure *ds) {
 				wprintw(win, "$");
 				scrollok(win,TRUE);
 			}
-			ds->mid = ds->mid->next;
 		}
 		wmove(win, temp_winy, temp_winx);		
 		
